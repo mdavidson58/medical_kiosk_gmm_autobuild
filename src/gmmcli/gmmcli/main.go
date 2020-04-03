@@ -41,17 +41,21 @@ gmm_api_key := gmmapi.Retrieve_gmm_api_key(user_name, user_pass)
 //fmt.Println("tag 1 = " + strconv.Itoa(gmmapi.Retrieve_gmm_org_tag_id(gmm_api_key, my_org_id, 0)))
 
 // let's build orgs
-for x :=0; x< 2; x++ {
+number_of_orgs := 100
+for x :=0; x< number_of_orgs; x++ {
 	
-Org :="TeleMedicine" + strconv.Itoa(x)
+Org_Name :="TeleMedicine" + strconv.Itoa(x)
+
+// if org already exists...delete it
+gmmapi.Gmm_delete_org(gmm_api_key, my_org_id, Org_Name)
 
 // create the new org 
-  new_org_id := gmmapi.Create_gmm_org(gmm_api_key, Org, my_org_id)
+  new_org_id := gmmapi.Create_gmm_org(gmm_api_key, Org_Name, my_org_id)
   fmt.Println ("org " + strconv.Itoa(new_org_id) + " created")
 
 // Upload a Flexible Template to GMM
 // substitute flex.json with the flexible template
-dual_radio_flex_template := `
+dual_vpn_flex_template := `
 {
      "name": "829 Telemedicine - Dual LTE Adv Template",
       "description": "",
@@ -67,7 +71,7 @@ dual_radio_flex_template := `
 }`
 
 
-single_radio_flex_template := `
+single_vpn_flex_template := `
 {
       "name": "829 Telemedicine - Single LTE Adv Template",
       "description": "",
@@ -80,15 +84,41 @@ single_radio_flex_template := `
       "flexible_template_type": "router"
 }`
 
-gmmapi.Gmm_upload_flex_template(gmm_api_key,new_org_id,dual_radio_flex_template)
-gmmapi.Gmm_upload_flex_template(gmm_api_key,new_org_id,single_radio_flex_template)
+ap_flex_template := `
+{
+      "name": "829 Telemedicine Basic AP Adv Template",
+      "description": "",
+      "template": "dot11 ssid ${custom.WiFi_SSID_Name}\n   vlan 1\n   authentication open\n   authentication key-management wpa version 2\n   mbssid guest-mode\n   wpa-psk ascii 0 ${custom.WiFi_Password}\n!\ninterface Dot11Radio0\n no ssid 829\n!\ninterface Dot11Radio1\n no ssid 829\n!\ninterface Dot11Radio0\n ssid ${custom.WiFi_SSID_Name}\n!\ninterface Dot11Radio1\n ssid ${custom.WiFi_SSID_Name}\n!\nno dot11 ssid 829",
+      "variables": [
+        "WiFi_SSID_Name",
+        "WiFi_Password"
+      ],
+      "flexible_template_type": "ap",
+      "variables_with_type": [
+        {
+          "name": "WiFi_SSID_Name",
+          "type": "text"
+        },
+        {
+          "name": "WiFi_Password",
+          "type": "text"
+        }
+      ]
+ }`
+
+gmmapi.Gmm_upload_flex_template(gmm_api_key,new_org_id,dual_vpn_flex_template)
+gmmapi.Gmm_upload_flex_template(gmm_api_key,new_org_id,single_vpn_flex_template)
+gmmapi.Gmm_upload_flex_template(gmm_api_key,new_org_id,ap_flex_template)
+
 
 //Get the template id
-dual_flex_id := gmmapi.Retrieve_gmm_flex_template_id(gmm_api_key, new_org_id, "829 Telemedicine - Dual LTE Adv Template") 
-single_flex_id := gmmapi.Retrieve_gmm_flex_template_id(gmm_api_key, new_org_id, "829 Telemedicine - Single LTE Adv Template")
+dual_vpn_flex_id := gmmapi.Retrieve_gmm_flex_template_id(gmm_api_key, new_org_id, "829 Telemedicine - Dual LTE Adv Template") 
+single_vpn_flex_id := gmmapi.Retrieve_gmm_flex_template_id(gmm_api_key, new_org_id, "829 Telemedicine - Single LTE Adv Template")
+ap_flex_id := gmmapi.Retrieve_gmm_flex_template_id(gmm_api_key, new_org_id, "829 Telemedicine Basic AP Adv Template")
+
 
 //replace flexible template id with actual flexbile template id
-dual_radio_profile := ` 
+dual_vpn_radio_profile := ` 
 {
       "name": "829 Telemedicine dual Cell and VPN",
       "wifi_enable": true,
@@ -182,9 +212,9 @@ dual_radio_profile := `
       "gate_ways_count": 1,
       "port_forwards": []
 }`
-dual_radio_profile = strings.Replace(dual_radio_profile, "XX", strconv.Itoa(dual_flex_id),1)
+dual_vpn_radio_profile = strings.Replace(dual_vpn_radio_profile, "XX", strconv.Itoa(dual_vpn_flex_id),1)
 
-single_radio_profile :=` 
+single_vpn_radio_profile :=` 
 {
       "name": "829 Telemedicine single Cell and VPN",
       "wifi_enable": false,
@@ -270,15 +300,173 @@ single_radio_profile :=`
       "gate_ways_count": 2,
       "port_forwards": []
 }`
-single_radio_profile = strings.Replace(single_radio_profile, "XX", strconv.Itoa(single_flex_id),1)
+single_vpn_radio_profile = strings.Replace(single_vpn_radio_profile, "XX", strconv.Itoa(single_vpn_flex_id),1)
+
+
+single_novpn_radio_profile := `{
+      "name": "829 Telemedicine Basic Single Cellular",
+      "wifi_enable": true,
+      "wifi_ssid_prefix": "",
+      "lan_enable": true,
+      "wan_enable": true,
+      "automatic_wifi_config": false,
+      "wifi_ssid": "829",
+      "wifi_pre_shared_key": "ciscociscoCisco",
+      "asset_names": [],
+      "wan_interface_type": "No Change",
+      "apn": null,
+      "secondary_apn": null,
+      "gps_enable": true,
+      "wgb_enable": false,
+      "wgb_ssid": null,
+      "wgb_pre_shared_key": null,
+      "wgb_subnet": null,
+      "customer_vpn_enable": false,
+      "customer_vpn_server_ip": null,
+      "customer_vpn_pre_shared_key": null,
+      "private_subnet_enable": true,
+      "private_subnet": "192.168.0.1/24",
+      "private_subnet_dns_ip": "8.8.8.8",
+      "private_subnet_exclusion_range_start": "192.168.0.1",
+      "private_subnet_exclusion_range_end": "192.168.0.5",
+      "default": false,
+      "port_forwarding_enable": false,
+      "private_subnet_advanced": false,
+      "private_subnet_gateway_ip": "192.168.0.1",
+      "private_subnet_netmask": "255.255.255.0",
+      "ip_dhcp_helper": null,
+      "broadcast_ssid_enable": true,
+      "vrf_enable": false,
+      "model": "IR829",
+      "backup_customer_vpn_server_ip": null,
+      "backup_customer_vpn_pre_shared_key": null,
+      "flexible_template_id": null,
+      "flexible_template_enable": false,
+      "flexible_template_advanced": false,
+      "flexible_template_variables": [],
+      "advanced_wifi_config": false,
+      "unified_ap_enable": false,
+      "wlc_primary_ip": "",
+      "wlc_secondary_ip": "",
+      "dot1x_enable": false,
+      "primary_aaa_server_ip": null,
+      "secondary_aaa_server_ip": null,
+      "primary_aaa_server_key": null,
+      "secondary_aaa_server_key": null,
+      "lan_ports": [
+        "gi1->true",
+        "gi2->true",
+        "gi3->true",
+        "gi4->true"
+      ],
+      "recovery_time": 120,
+      "dual_lte_active_enable": false,
+      "dual_lte_active_load": null,
+      "dual_lte_active_subnet": null,
+      "ip_connectivity_check_sim_0": null,
+      "ip_connectivity_check_sim_1": null,
+      "expansion_module": "f",
+      "pluggable_module": null,
+      "pluggable_interface_module": null,
+      "ap_flexible_template_id": XX,
+      "ap_flexible_template_enable": true,
+      "ap_flexible_template_advanced": true,
+      "ap_flexible_template_variables": [],
+      "gate_ways_count": 1,
+      "port_forwards": []
+}`
+
+single_novpn_radio_profile = strings.Replace(single_novpn_radio_profile, "XX", strconv.Itoa(ap_flex_id),1)
+
+
+dual_novpn_radio_profile := `
+{
+      "name": "829 Telemedicine Basic Dual Cellular",
+      "wifi_enable": true,
+      "wifi_ssid_prefix": "",
+      "lan_enable": true,
+      "wan_enable": true,
+      "automatic_wifi_config": false,
+      "wifi_ssid": "829",
+      "wifi_pre_shared_key": "cisco12345",
+      "asset_names": [],
+      "wan_interface_type": "No Change",
+      "apn": null,
+      "secondary_apn": null,
+      "gps_enable": true,
+      "wgb_enable": false,
+      "wgb_ssid": null,
+      "wgb_pre_shared_key": null,
+      "wgb_subnet": null,
+      "customer_vpn_enable": false,
+      "customer_vpn_server_ip": null,
+      "customer_vpn_pre_shared_key": null,
+      "private_subnet_enable": true,
+      "private_subnet": "192.168.0.1/24",
+      "private_subnet_dns_ip": "8.8.8.8",
+      "private_subnet_exclusion_range_start": "192.168.0.1",
+      "private_subnet_exclusion_range_end": "192.168.0.5",
+      "default": false,
+      "port_forwarding_enable": false,
+      "private_subnet_advanced": false,
+      "private_subnet_gateway_ip": "192.168.0.1",
+      "private_subnet_netmask": "255.255.255.0",
+      "ip_dhcp_helper": null,
+      "broadcast_ssid_enable": true,
+      "vrf_enable": false,
+      "model": "IR829",
+      "backup_customer_vpn_server_ip": null,
+      "backup_customer_vpn_pre_shared_key": null,
+      "flexible_template_id": null,
+      "flexible_template_enable": false,
+      "flexible_template_advanced": false,
+      "flexible_template_variables": [],
+      "advanced_wifi_config": false,
+      "unified_ap_enable": false,
+      "wlc_primary_ip": "",
+      "wlc_secondary_ip": "",
+      "dot1x_enable": false,
+      "primary_aaa_server_ip": null,
+      "secondary_aaa_server_ip": null,
+      "primary_aaa_server_key": null,
+      "secondary_aaa_server_key": null,
+      "lan_ports": [
+        "gi1->true",
+        "gi2->true",
+        "gi3->true",
+        "gi4->true"
+      ],
+      "recovery_time": 120,
+      "dual_lte_active_enable": true,
+      "dual_lte_active_load": "equal",
+      "dual_lte_active_subnet": null,
+      "ip_connectivity_check_sim_0": "",
+      "ip_connectivity_check_sim_1": "",
+      "expansion_module": "f",
+      "pluggable_module": null,
+      "pluggable_interface_module": null,
+      "ap_flexible_template_id": XX,
+      "ap_flexible_template_enable": true,
+      "ap_flexible_template_advanced": true,
+      "ap_flexible_template_variables": [],
+      "gate_ways_count": 1,
+      "port_forwards": []
+}`
+
+dual_novpn_radio_profile = strings.Replace(dual_novpn_radio_profile, "XX", strconv.Itoa(ap_flex_id),1)
+
 
 // Upload a Gateway Profile to GMM
-gmmapi.Gmm_upload_gwy_profile(gmm_api_key,new_org_id,dual_radio_profile)
-gmmapi.Gmm_upload_gwy_profile(gmm_api_key,new_org_id,single_radio_profile)
+gmmapi.Gmm_upload_gwy_profile(gmm_api_key,new_org_id,dual_vpn_radio_profile)
+gmmapi.Gmm_upload_gwy_profile(gmm_api_key,new_org_id,single_vpn_radio_profile)
+gmmapi.Gmm_upload_gwy_profile(gmm_api_key,new_org_id,dual_novpn_radio_profile)
+gmmapi.Gmm_upload_gwy_profile(gmm_api_key,new_org_id,single_novpn_radio_profile)
 
 // get profile id for claim policy
-dual_profile_id := gmmapi.Retrieve_gmm_profile_id(gmm_api_key, new_org_id, "829 Telemedicine dual Cell and VPN")
-single_profile_id := gmmapi.Retrieve_gmm_profile_id(gmm_api_key, new_org_id, "829 Telemedicine single Cell and VPN")
+dual_vpn_profile_id := gmmapi.Retrieve_gmm_profile_id(gmm_api_key, new_org_id, "829 Telemedicine dual Cell and VPN")
+single_vpn_profile_id := gmmapi.Retrieve_gmm_profile_id(gmm_api_key, new_org_id, "829 Telemedicine single Cell and VPN")
+dual_novpn_profile_id := gmmapi.Retrieve_gmm_profile_id(gmm_api_key, new_org_id, "829 Telemedicine Basic Dual Cellular")
+single_novpn_profile_id := gmmapi.Retrieve_gmm_profile_id(gmm_api_key, new_org_id, "829 Telemedicine Basic Single Cellular")
 
 // retrieve the id of the first tag
 new_tag_id := gmmapi.Retrieve_gmm_org_tag_id(gmm_api_key, new_org_id, 0)
@@ -291,8 +479,10 @@ tag_string := `
     "enabled": true,
     "field_type": "Dropdown",
     "allowed_values": [
-      "Telemedicine with Dual Radios",
-      "Telemedicine with Single Radio"
+      "VPN with Dual Radios",
+      "VPN with Single Radio",
+      "NO VPN with Dual Radios",
+      "NO VPN with Single Radio"
     ]
  }`
 
@@ -307,25 +497,40 @@ tag_string := `
       "tag_id": XX,
       "policy_templates": [
         {
-          "value": "Telemedicine with Dual Radios",
+          "value": "VPN with Dual Radios",
           "template_ids": [
             YY
           ]
         },
         {
-          "value": "Telemedicine with Single Radio",
+          "value": "VPN with Single Radio",
           "template_ids": [
             ZZ
+          ]
+        },
+         {
+          "value": "NO VPN with Dual Radios",
+          "template_ids": [
+            AA
+          ]
+        },
+         {
+          "value": "NO VPN with Single Radio",
+          "template_ids": [
+            BB
           ]
         }
       ] 
  }`
 
-// replcae tag_id with actual tagid
+// replacae tag_id with actual tagid
  claim_policy = strings.Replace(claim_policy, "XX", strconv.Itoa(new_tag_id),1)
  // replace template_id with actual profile
- claim_policy = strings.Replace(claim_policy, "YY", strconv.Itoa(dual_profile_id),1)
- claim_policy = strings.Replace(claim_policy, "ZZ", strconv.Itoa(single_profile_id),1)
+ claim_policy = strings.Replace(claim_policy, "YY", strconv.Itoa(dual_vpn_profile_id),1)
+ claim_policy = strings.Replace(claim_policy, "ZZ", strconv.Itoa(single_vpn_profile_id),1)
+ claim_policy = strings.Replace(claim_policy, "AA", strconv.Itoa(dual_novpn_profile_id),1)
+ claim_policy = strings.Replace(claim_policy, "BB", strconv.Itoa(single_novpn_profile_id),1)
+
 
  	
 fmt.Println ("claim policy " + strconv.Itoa(gmmapi.Create_claim_policy(gmm_api_key, new_org_id, claim_policy)) + " created")
