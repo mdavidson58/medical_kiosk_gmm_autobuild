@@ -735,7 +735,7 @@ type Org_Tag struct {
 
 jsonValue, _ := json.Marshal("")
 
-url := "https://us.ciscokinetic.io/api/v2/organizations/" + strconv.Itoa(org_id) + "/tags?offset=" + strconv.Itoa(varnum) + "&limit=" + strconv.Itoa(1)
+url := "https://us.ciscokinetic.io/api/v2/organizations/" + strconv.Itoa(org_id) + "/tags?offset=0&limit=" + strconv.Itoa(varnum)
 
 request, _ := http.NewRequest("GET", url, bytes.NewBuffer(jsonValue))
 token := "Token " + gmm_api_key
@@ -756,9 +756,20 @@ fmt.Println("Unmarshall Error: ", e)
   os.Exit(1)
 }
 
-fmt.Println("Retrieved Tag ID = " + strconv.Itoa(responseObject[varnum].ID))
-return responseObject[varnum].ID
-
+tagid := 0
+counter := 0
+for i:=0; i<varnum; i++ {
+	if responseObject[i].Org_ID ==  org_id  {
+		if counter == 0 {
+			tagid = responseObject[i].ID
+			fmt.Println("Retrieved Tag ID = " + strconv.Itoa(responseObject[i].ID))
+		}
+		counter = counter + 1
+	}
+}
+return tagid
+//fmt.Println("Retrieved Tag ID = " + strconv.Itoa(responseObject[varnum].ID))
+//return responseObject[varnum].ID
 }
 
 // Create a new org in GMM
@@ -1011,6 +1022,7 @@ request.Header.Set("Authorization", token)
 client := &http.Client{}
 r, err := client.Do(request)
 
+
 if err != nil {
 fmt.Printf("Delete org error %s\n", err)
 os.Exit(1)
@@ -1022,6 +1034,11 @@ e := json.Unmarshal(responseData, &responseObject)
 if e != nil {
 fmt.Println("Unmarshall Error: ", e)
 os.Exit(1)
+}
+
+if r.StatusCode != 200 {
+		fmt.Println("Org " + org_name + " with ID " + strconv.Itoa(org_id) + " could not be deleted.  Status code: " + strconv.Itoa(r.StatusCode))
+		os.Exit(1)
 }
 
 fmt.Println("")

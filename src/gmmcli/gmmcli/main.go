@@ -473,7 +473,7 @@ dual_novpn_profile_id := gmmapi.Retrieve_gmm_profile_id(gmm_api_key, new_org_id,
 single_novpn_profile_id := gmmapi.Retrieve_gmm_profile_id(gmm_api_key, new_org_id, "829 Telemedicine Basic Single Cellular")
 
 // retrieve the id of the first tag
-new_tag_id := gmmapi.Retrieve_gmm_org_tag_id(gmm_api_key, new_org_id, 0)
+new_tag_id := gmmapi.Retrieve_gmm_org_tag_id(gmm_api_key, new_org_id, 5)
 
 // this is our tag
 tag_string := `  
